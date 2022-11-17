@@ -14,7 +14,7 @@ num_frames = st.text_input('Num_frames', '50')
 cut_sim_value = st.text_input('Cut Sim', '0.6')
 cas_url = st.text_input('CLIP-as-service Server', 'grpcs://api.clip.jina.ai:2096')
 search_button = st.button('Search')
-analysis_button = st.button('Analysis')
+analysis_button = st.button('Extract')
 
 if analysis_button:
     with st.spinner('Processing...'):
