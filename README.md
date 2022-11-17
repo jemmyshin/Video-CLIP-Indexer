@@ -19,6 +19,8 @@ Click the `extract` after uploading your video, the key frames will be extracted
 After extracting key frame, input your text prompt and click `search`, and then you will get the related clips
 
 
+Notice: remember to click `extract` when you want to search for another video after you uploading it.
+
 ## Parameters
 ### Text Prompt
 You can use a prompt to describe the scene you want to search for. The indexer will return several clips related to it.
