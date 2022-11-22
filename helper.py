@@ -10,6 +10,7 @@ keyframe_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keyfra
 if not os.path.exists(keyframe_path):
     os.mkdir(keyframe_path)
 
+
 def get_keyframes_data(video_data: 'np.ndarray', cut_sim: float):
     last_hash = imagehash.phash(Image.fromarray(video_data[0]))
     key_frames = [0]
@@ -33,8 +34,8 @@ def get_keyframes_data(video_data: 'np.ndarray', cut_sim: float):
     return keyframes_data
 
 
-def search_frame(keyframe_da: DocumentArray, prompt: str, topn: int, server_url: str):
-    client = Client(server_url, credential={'Authorization': os.getenv('JINA_AUTH_TOKEN')})
+def search_frame(keyframe_da: DocumentArray, prompt: str, topn: int, server_url: str, token: str):
+    client = Client(server_url, credential={'Authorization': token})
     d = Document(text=prompt, matches=keyframe_da)
     r = client.rank([d], show_progress=True)
     result = r['@m', ['tags', 'blob', 'scores__clip_score__value']]
