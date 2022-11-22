@@ -40,9 +40,9 @@ if analysis_button:
         # st.session_state.video_data = skvideo.io.vread('tmp_videos/' + uploaded_file.name, num_frames=num_frames)
         # shutil.rmtree('tmp_videos')
         # keyframe_data = get_keyframes_data(st.session_state.video_data, float(cut_sim_value))
-        st.session_state.keyframe_data = DocumentArray([Document(tags={'left': str(tup[0][0]),
-                                                                       'right': str(tup[0][1])},
+        st.session_state.keyframe_data = DocumentArray([Document(id=tup.split('/')[1],
                                                                  uri=tup).load_uri_to_blob() for tup in keyframe_data])
+
         # for d in st.session_state.keyframe_data:
         #     d.tensor = None
         shutil.rmtree('tmp_videos')

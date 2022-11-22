@@ -38,5 +38,5 @@ def search_frame(keyframe_da: DocumentArray, prompt: str, topn: int, server_url:
     client = Client(server_url, credential={'Authorization': token})
     d = Document(text=prompt, matches=keyframe_da)
     r = client.rank([d], show_progress=True)
-    result = r['@m', ['tags', 'blob', 'scores__clip_score__value']]
+    result = r['@m', ['id', 'blob', 'scores__clip_score__value']]
     return [each[:topn] for each in result]
