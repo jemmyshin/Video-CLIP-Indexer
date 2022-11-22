@@ -1,6 +1,7 @@
 import streamlit as st
 from helper import search_frame, get_keyframes_data
 import os
+os.system('apt-get install --no-upgrade ffmpeg')
 import shutil
 import skvideo.io
 from docarray import DocumentArray, Document
