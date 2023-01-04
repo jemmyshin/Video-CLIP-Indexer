@@ -1,19 +1,14 @@
-import shutil
-
 import streamlit as st
-from helper import search_frame, get_keyframes_data
+from helper import search_frame
 import os
-import skvideo.io
-from docarray import DocumentArray, Document
+from docarray import Document
 
 st.set_page_config(page_title='Video CLIP Indexer', page_icon='🔍')
 st.title('Video CLIP Indexer')
 uploaded_file = st.file_uploader('Choose a file')
-text_prompt = st.text_input('Text Prompt', '')
-topn_value = st.text_input('Top N', '5')
-num_frames = st.text_input('Num_frames', '50')
-cut_sim_value = st.text_input('Cut Sim', '0.6')
-cas_url = st.text_input('CLIP-as-service Server', 'grpcs://api.clip.jina.ai:2096')
+query = st.text_input('Text Query', '')
+similarity_threshold = st.text_input('Similarity Threshold', '0.8')
+cas_url = st.text_input('CLIP-as-service Server', 'grpc://0.0.0.0:51000')
 token = st.text_input('Token', '<your access token>')
 analysis_button = st.button('Extract Key Frames')
 search_button = st.button('Search')
@@ -24,32 +19,46 @@ if analysis_button:
         with open('tmp_videos/' + uploaded_file.name, 'wb') as f:
             f.write(uploaded_file.getvalue())
 
-        st.session_state.video_data = skvideo.io.vread('tmp_videos/' + uploaded_file.name)
-        keyframe_data = get_keyframes_data(st.session_state.video_data, float(cut_sim_value))
-        st.session_state.keyframe_data = DocumentArray(
-            [Document(tags={'left': str(tup[0][0]),
-                            'right': str(tup[0][1])},
-                      tensor=tup[
-                          1]).convert_image_tensor_to_blob()
-             for tup in keyframe_data])
+        d = Document(uri='tmp_videos/' + uploaded_file.name).load_uri_to_video_tensor(
+            only_keyframes=False)
+
+        st.session_state.original_video = d
+        keyframes = [
+            Document(tensor=d.tensor[i]).convert_image_tensor_to_blob()
+            for i in range(len(d.tensor)) if i in d.tags['keyframe_indices']]
+        for idx, frame in enumerate(keyframes):
+            frame.tags['index'] = idx
+        st.session_state.keyframes = keyframes
         st.success('Done extracting key frames, now you can search for it!')
 
 if search_button:
-    if 'keyframe_data' in st.session_state:
+    if 'keyframes' in st.session_state and 'original_video' in st.session_state:
+        video = st.session_state.original_video
+
         with st.spinner(
-                f"We are searching from {len(st.session_state.keyframe_data)} frames..."):
-            spams, ndarray, scores = search_frame(st.session_state.keyframe_data,
-                                                  text_prompt,
-                                                  int(topn_value), cas_url, token)
-            os.makedirs('tmp_videos', exist_ok=True)
-            for spam in spams:
-                i = spams.index(spam)
-                save_name = 'tmp_videos/' + str(i) + '_tmp.mp4'
-                skvideo.io.vwrite(save_name,
-                                  st.session_state.video_data[int(spam['left']):int(spam['right'])])
-                st.video(save_name)
-                os.remove(save_name)
-            shutil.rmtree('tmp_videos')
-        st.success('Done!')
+                f"We are searching from {len(st.session_state.keyframes)} keyframes..."):
+            tags, id, scores = search_frame(st.session_state.keyframes,
+                                            query,
+                                            cas_url, token)
+            index = int(tags[0]['index'])
+            most_similar_scene = Document(tensor=video.tensor[
+                                                 video.tags['keyframe_indices'][
+                                                     index]: min(len(video.tensor),
+                                                                 video.tags[
+                                                                     'keyframe_indices'][
+                                                                     index + 1])
+                                                 ])
+            max_similarity_score = scores[0]
+
+            if max_similarity_score >= float(similarity_threshold):
+                os.makedirs('tmp_videos', exist_ok=True)
+                most_similar_scene.save_video_tensor_to_file(file='tmp_videos/tmp.mp4')
+                st.success(
+                    f'Found a match with similarity score: {max_similarity_score}')
+                st.video('tmp_videos/tmp.mp4')
+                os.remove('tmp_videos/tmp.mp4')
+            else:
+                st.success(f'No match found. Max similarity score: {max_similarity_score} '
+                           f'is smaller than threshold: {similarity_threshold}')
     else:
         st.warning('Please extract the key frame first')
