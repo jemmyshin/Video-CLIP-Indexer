@@ -1,6 +1,6 @@
 import streamlit as st
 from helper import search_frame
-import os
+import os, shutil
 from docarray import Document
 
 st.set_page_config(page_title='Video CLIP Indexer', page_icon='🔍')
@@ -8,6 +8,8 @@ st.title('Video CLIP Indexer')
 uploaded_file = st.file_uploader('Choose a file')
 query = st.text_input('Text Query', '')
 top_n = st.text_input('Top N', '5')
+save_keyframes = st.selectbox('save keyframes', ('True', 'False'))
+keyframes_dir = st.text_input('directory for saving keyframes', '')
 similarity_threshold = st.text_input('Similarity Threshold', '0.8')
 cas_url = st.text_input('CLIP-as-service Server', 'grpc://0.0.0.0:51000')
 token = st.text_input('Token', '<your access token>')
@@ -24,11 +26,26 @@ if analysis_button:
             only_keyframes=False)
 
         st.session_state.original_video = d
-        keyframes = [
-            Document(tensor=d.tensor[i]).convert_image_tensor_to_blob()
-            for i in range(len(d.tensor)) if i in d.tags['keyframe_indices']]
-        for idx, frame in enumerate(keyframes):
-            frame.tags['index'] = idx
+        # keyframes = [
+        #     Document(tensor=d.tensor[i]).convert_image_tensor_to_blob()
+        #     for i in range(len(d.tensor)) if i in d.tags['keyframe_indices']]
+        # for idx, frame in enumerate(keyframes):
+        #     frame.tags['index'] = idx
+
+        if save_keyframes:
+            shutil.rmtree(keyframes_dir)
+            os.makedirs(keyframes_dir, exist_ok=True)
+
+        keyframes = []
+        for i in range(len(d.tensor)):
+            if i in d.tags['keyframe_indices']:
+                keyframe = Document(tensor=d.tensor[i],
+                                    tags={'index': len(keyframes)})
+                if save_keyframes:
+                    keyframe.save_image_tensor_to_file(file=f'{keyframes_dir}/{len(keyframes)}.png')
+                keyframe.convert_image_tensor_to_blob()
+                keyframes.append(keyframe)
+
         st.session_state.keyframes = keyframes
         st.success('Done extracting key frames, now you can search for it!')
 
